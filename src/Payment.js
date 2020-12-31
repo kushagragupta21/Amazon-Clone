@@ -6,6 +6,7 @@ import { useStateValue } from './StateProvider';
 import {CardElement, useStripe, useElements} from "@stripe/react-stripe-js";
 import CurrencyFormat from "react-currency-format";
 import axios from './axios'
+import {db} from './firebase'
 // import {getBasketTotal} from "./reducer"
 
 function Payment() {
@@ -44,10 +45,12 @@ function Payment() {
         getClientSecret();
     },[basket])
 
+    console.log('THE SECRET ID >>>',clientSecret);
+
     const handleSubmit= async (event)=>{
         // do some fancy stripe stuff
 
-        event.PreventDefault();
+        event.preventDefault();
         setProcessing(true);    // it disables button pressing again and again
 
         const payload = await stripe.confirmCardPayment(clientSecret ,{
@@ -56,11 +59,25 @@ function Payment() {
             }
 
         }).then(({paymentIntent}) => {
-            //paymentIntent = payment Confirmation
+            // paymentIntent = payment Confirmation
+
+            db.collection('users')
+            .doc(user?.uid)
+            .collection('orders')
+            .doc(paymentIntent.id)
+            .set({
+                basket: basket,
+                amount: paymentIntent.amount,
+                created: paymentIntent.created
+            })
 
             setSucceeded(true);
             setError(null);
             setProcessing(false);
+
+            dispatch({
+                type: 'EMPTY_BASKET'
+            })
 
             history.replace('/orders');
         })
